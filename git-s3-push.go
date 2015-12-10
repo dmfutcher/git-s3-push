@@ -13,6 +13,7 @@ type Repository struct {
     GitRepo         *gogit.Repository
     HeadCommit      *gogit.Commit
     LastPushCommit  *gogit.Commit
+    UnpushedFiles   []string
 }
 
 func OpenRepository() (*Repository, error) {
@@ -63,6 +64,30 @@ func (repo *Repository) FindRelevantCommits() error {
     return nil
 }
 
+func (repo *Repository) ModifiedFilesInCommit(dirname string, te *gogit.TreeEntry) int {
+    filePath := filepath.Join(dirname, te.Name)
+
+    if _, err := os.Stat(filePath); err == nil {
+        repo.UnpushedFiles = append(repo.UnpushedFiles, filePath)
+    }
+
+    return 0;
+}
+
+func (repo *Repository) FindUnpushedModifiedFiles() {
+    currentCommit := repo.HeadCommit;
+
+    for currentCommit != nil && currentCommit.ParentCount() > 0 {
+        currentCommit.Tree.Walk(repo.ModifiedFilesInCommit)
+
+        if repo.LastPushCommit != nil && repo.LastPushCommit.Id() == currentCommit.Id() {
+            break;
+        }
+
+        currentCommit = currentCommit.Parent(0)
+    }
+}
+
 func main() {
     repo, err := OpenRepository()
     if err != nil {
@@ -74,6 +99,9 @@ func main() {
         fmt.Println(err)
         os.Exit(1)
     }
+
+    repo.FindUnpushedModifiedFiles();
+    fmt.Println(len(repo.UnpushedFiles))
 
     fmt.Println(repo.LastPushCommit)
 }
