@@ -5,6 +5,7 @@ import (
     "os/exec"
     "bufio"
     "fmt"
+    "flag"
     "github.com/speedata/gogit"
     "github.com/aws/aws-sdk-go/aws"
     "github.com/aws/aws-sdk-go/aws/session"
@@ -184,6 +185,10 @@ func main() {
         os.Exit(1)
     }
 
+    flag.StringVar(&repo.Config.S3Bucket, "b", "", "Destination S3 bucket name")
+    flag.StringVar(&repo.Config.S3Region, "r", "", "AWS region of destination bucket")
+    flag.Parse()
+
     if err := repo.FindRelevantCommits(); err != nil {
         fmt.Println(err)
         os.Exit(1)
@@ -196,8 +201,7 @@ func main() {
         os.Exit(0)
     }
 
-    config := RepoConfig{S3Region: "eu-west-1", S3Bucket: "git-s3-push-test"}
-    uploader := InitS3Uploader(config)
+    uploader := InitS3Uploader(repo.Config)
 
     for filePath := range repo.UnpushedFiles.Iter() {
         fmt.Println("Uploading: " + filePath.(string))
