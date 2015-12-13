@@ -262,7 +262,7 @@ func main() {
     uploader := InitS3Uploader(repo.Config)
 
     for filePath := range repo.UnpushedFiles.Iter() {
-        fmt.Println("Uploading: " + filePath.(string))
+        fmt.Println("Uploading: ", filePath.(string))
         err := uploader.UploadFile(filePath.(string))
         if err != nil {
             fmt.Println(err)
