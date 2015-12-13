@@ -2,12 +2,14 @@ package main
 
 import (
     "os"
-    //"io"
+    "os/exec"
+    "bufio"
     "fmt"
     "github.com/speedata/gogit"
     "github.com/aws/aws-sdk-go/aws"
     "github.com/aws/aws-sdk-go/aws/session"
     "github.com/aws/aws-sdk-go/service/s3/s3manager"
+    "github.com/deckarep/golang-set"
     "path/filepath"
 )
 
@@ -17,7 +19,7 @@ type Repository struct {
     GitRepo         *gogit.Repository
     HeadCommit      *gogit.Commit
     LastPushCommit  *gogit.Commit
-    UnpushedFiles   []string
+    UnpushedFiles   mapset.Set
     Config          RepoConfig
     S3Uploader      S3Uploader
 }
@@ -29,6 +31,7 @@ type RepoConfig struct {
 
 func OpenRepository() (*Repository, error) {
     repo := new(Repository)
+    repo.UnpushedFiles = mapset.NewSet()
 
     wd, err := os.Getwd()
     if err != nil {
@@ -75,32 +78,67 @@ func (repo *Repository) FindRelevantCommits() error {
     return nil
 }
 
-func (repo *Repository) ModifiedFilesInCommit(dirname string, te *gogit.TreeEntry) int {
-    filePath := filepath.Join(dirname, te.Name)
-
-    if _, err := os.Stat(filePath); err == nil {
-        repo.UnpushedFiles = append(repo.UnpushedFiles, filePath)
+func (repo *Repository) ReadGitModifiedFiles(scanner *bufio.Scanner, stop chan bool)  {
+    for scanner.Scan() {
+        repo.UnpushedFiles.Add(scanner.Text())
     }
 
-    return 0;
+    stop <- true
 }
 
-func (repo *Repository) FindUnpushedModifiedFiles() {
-    if repo.HeadCommit.Id().Equal(repo.LastPushCommit.Id()) {
-        return
+func (repo *Repository) FindCommitModifiedFiles(commit *gogit.Commit) error {
+    cmd := exec.Command("git", "diff-tree", "--no-commit-id", "--name-only", "--root", commit.Id().String())
+    out, err := cmd.StdoutPipe()
+    if err != nil {
+        return err
     }
 
+    err = cmd.Start()
+    if err != nil {
+        return err
+    }
+
+    scanner := bufio.NewScanner(out)
+
+    stop := make(chan bool)
+    go repo.ReadGitModifiedFiles(scanner, stop)
+    <-stop
+    cmd.Wait()
+
+    return nil
+}
+
+func (repo *Repository) FindUnpushedModifiedFiles() error {
+    queue := []*gogit.Commit{};
+    visited := mapset.NewSet();
+
     currentCommit := repo.HeadCommit;
-
     for currentCommit != nil && currentCommit.ParentCount() > 0 {
-        currentCommit.Tree.Walk(repo.ModifiedFilesInCommit)
-
-        if repo.LastPushCommit != nil && repo.LastPushCommit.Id() == currentCommit.Id() {
+        if repo.LastPushCommit != nil && repo.LastPushCommit.Id().Equal(currentCommit.Id()) {
             break;
         }
 
-        currentCommit = currentCommit.Parent(0)
+        err := repo.FindCommitModifiedFiles(currentCommit)
+        if err != nil {
+            return err
+        }
+
+        for i := 0; i < currentCommit.ParentCount(); i++ {
+            parentCommit := currentCommit.Parent(i)
+            if !visited.Contains(parentCommit) {
+                queue = append(queue, parentCommit)
+            }
+        }
+
+        if len(queue) < 1 {
+            break;
+        }
+
+        currentCommit = queue[0]
+        queue = queue[1:]
     }
+    
+    return nil
 }
 
 type S3Uploader struct {
@@ -153,7 +191,7 @@ func main() {
 
     repo.FindUnpushedModifiedFiles();
 
-    if len(repo.UnpushedFiles) == 0 {
+    if repo.UnpushedFiles.Cardinality() == 0 {
         fmt.Println("No modified files to push")
         os.Exit(0)
     }
@@ -161,9 +199,9 @@ func main() {
     config := RepoConfig{S3Region: "eu-west-1", S3Bucket: "git-s3-push-test"}
     uploader := InitS3Uploader(config)
 
-    for _, filePath := range repo.UnpushedFiles {
-        fmt.Println("Uploading: " + filePath)
-        err := uploader.UploadFile(filePath)
+    for filePath := range repo.UnpushedFiles.Iter() {
+        fmt.Println("Uploading: " + filePath.(string))
+        err := uploader.UploadFile(filePath.(string))
         if err != nil {
             fmt.Println(err)
             os.Exit(1)
