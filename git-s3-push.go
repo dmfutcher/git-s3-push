@@ -172,6 +172,19 @@ func (repo *Repository) FindUnpushedModifiedFiles() error {
     return nil
 }
 
+func (repo Repository) UpdateGitLastPushRef() error {
+    newLastPushRef := repo.HeadCommit.Id().String()
+    cmd := exec.Command("git", "update-ref", REF_S3_PUSH, newLastPushRef)
+
+    err := cmd.Start()
+    if err != nil {
+        return err
+    }
+
+    cmd.Wait()
+    return nil
+}
+
 type S3Uploader struct {
     BucketName      *string
     S3Uploader      *s3manager.Uploader
@@ -255,5 +268,10 @@ func main() {
             fmt.Println(err)
             os.Exit(1)
         }
+    }
+
+    err = repo.UpdateGitLastPushRef()
+    if err != nil {
+        fmt.Println("Failed to update LAST_S3_PUSH ref with git: ", err)
     }
 }
