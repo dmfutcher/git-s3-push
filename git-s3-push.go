@@ -16,7 +16,7 @@ import (
     "path/filepath"
 )
 
-const REF_S3_PUSH string = "LAST_S3_PUSH"
+const REF_S3_PUSH string = "refs/heads/s3-pushed"
 const CONFIG_FILE_PATH string = ".git_s3_push"
 
 type Repository struct {
