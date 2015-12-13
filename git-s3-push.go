@@ -2,8 +2,12 @@ package main
 
 import (
     "os"
+    //"io"
     "fmt"
     "github.com/speedata/gogit"
+    "github.com/aws/aws-sdk-go/aws"
+    "github.com/aws/aws-sdk-go/aws/session"
+    "github.com/aws/aws-sdk-go/service/s3/s3manager"
     "path/filepath"
 )
 
@@ -14,6 +18,13 @@ type Repository struct {
     HeadCommit      *gogit.Commit
     LastPushCommit  *gogit.Commit
     UnpushedFiles   []string
+    Config          RepoConfig
+    S3Uploader      S3Uploader
+}
+
+type RepoConfig struct {
+    S3Region        string
+    S3Bucket        string
 }
 
 func OpenRepository() (*Repository, error) {
@@ -75,6 +86,10 @@ func (repo *Repository) ModifiedFilesInCommit(dirname string, te *gogit.TreeEntr
 }
 
 func (repo *Repository) FindUnpushedModifiedFiles() {
+    if repo.HeadCommit.Id().Equal(repo.LastPushCommit.Id()) {
+        return
+    }
+
     currentCommit := repo.HeadCommit;
 
     for currentCommit != nil && currentCommit.ParentCount() > 0 {
@@ -86,6 +101,42 @@ func (repo *Repository) FindUnpushedModifiedFiles() {
 
         currentCommit = currentCommit.Parent(0)
     }
+}
+
+type S3Uploader struct {
+    BucketName      *string
+    S3Uploader      *s3manager.Uploader
+}
+
+func InitS3Uploader(config RepoConfig) *S3Uploader {
+    uploader := new(S3Uploader)
+    uploader.BucketName = aws.String(config.S3Bucket)
+
+    s3config := aws.Config{Region: aws.String(config.S3Region)}
+    s3uploader := s3manager.NewUploader(session.New(&s3config))
+    uploader.S3Uploader = s3uploader
+
+    return uploader
+}
+
+func (uploader S3Uploader) UploadFile(path string) error {
+    file, err := os.Open(path)
+    if err != nil {
+        return err
+    }
+
+    result, err := uploader.S3Uploader.Upload(&s3manager.UploadInput{
+        Body: file,
+        Bucket: uploader.BucketName,
+        Key: aws.String(path),
+    })
+
+    if err != nil {
+        return err
+    }
+
+    fmt.Println(result.Location)
+    return nil
 }
 
 func main() {
@@ -101,7 +152,21 @@ func main() {
     }
 
     repo.FindUnpushedModifiedFiles();
-    fmt.Println(len(repo.UnpushedFiles))
 
-    fmt.Println(repo.LastPushCommit)
+    if len(repo.UnpushedFiles) == 0 {
+        fmt.Println("No modified files to push")
+        os.Exit(0)
+    }
+
+    config := RepoConfig{S3Region: "eu-west-1", S3Bucket: "git-s3-push-test"}
+    uploader := InitS3Uploader(config)
+
+    for _, filePath := range repo.UnpushedFiles {
+        fmt.Println("Uploading: " + filePath)
+        err := uploader.UploadFile(filePath)
+        if err != nil {
+            fmt.Println(err)
+            os.Exit(1)
+        }
+    }
 }
