@@ -6,6 +6,8 @@ import (
     "bufio"
     "fmt"
     "flag"
+    "encoding/json"
+    "io/ioutil"
     "github.com/speedata/gogit"
     "github.com/aws/aws-sdk-go/aws"
     "github.com/aws/aws-sdk-go/aws/session"
@@ -15,6 +17,7 @@ import (
 )
 
 const REF_S3_PUSH string = "LAST_S3_PUSH"
+const CONFIG_FILE_PATH string = ".git_s3_push"
 
 type Repository struct {
     GitRepo         *gogit.Repository
@@ -51,6 +54,33 @@ func OpenRepository() (*Repository, error) {
     repo.GitRepo = gitRepo
 
     return repo, nil
+}
+
+func (repo *Repository) ReadConfigFile() error {
+    file, err := ioutil.ReadFile(CONFIG_FILE_PATH)
+    if err != nil {
+        return err
+    }
+
+    err = json.Unmarshal(file, &repo.Config)
+    if err != nil {
+        return err
+    }
+    return nil
+}
+
+func (repo Repository) SaveConfigToFile() error {
+    jsonData, err := json.Marshal(repo.Config)
+    if err != nil {
+        return err
+    }
+
+    err = ioutil.WriteFile(CONFIG_FILE_PATH, jsonData, 0644)
+    if err != nil {
+        return err
+    }
+
+    return nil
 }
 
 func (repo *Repository) FindRelevantCommits() error {
@@ -184,10 +214,25 @@ func main() {
         fmt.Println(err)
         os.Exit(1)
     }
+    repo.ReadConfigFile()
 
-    flag.StringVar(&repo.Config.S3Bucket, "b", "", "Destination S3 bucket name")
-    flag.StringVar(&repo.Config.S3Region, "r", "", "AWS region of destination bucket")
+    flag.StringVar(&repo.Config.S3Bucket, "b", repo.Config.S3Bucket, "Destination S3 bucket name")
+    flag.StringVar(&repo.Config.S3Region, "r", repo.Config.S3Region, "AWS region of destination bucket")
+    saveConfig := flag.Bool("save", false, "Save destination region/bucket to config file")
     flag.Parse()
+
+    if repo.Config.S3Bucket == "" {
+        flag.Usage()
+        os.Exit(1)
+    } else if (repo.Config.S3Region == "") {
+        flag.Usage()
+        os.Exit(1)
+    } else if (*saveConfig) {
+        err := repo.SaveConfigToFile()
+        if err != nil {
+            fmt.Println("WARNING: Failed to save config to file: ", err)
+        }
+    }
 
     if err := repo.FindRelevantCommits(); err != nil {
         fmt.Println(err)
