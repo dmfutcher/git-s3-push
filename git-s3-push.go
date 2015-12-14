@@ -6,6 +6,7 @@ import (
     "bufio"
     "fmt"
     "flag"
+    "regexp"
     "encoding/json"
     "io/ioutil"
     "github.com/speedata/gogit"
@@ -25,12 +26,14 @@ type Repository struct {
     LastPushCommit  *gogit.Commit
     UnpushedFiles   mapset.Set
     Config          RepoConfig
+    IgnoreRegexes   []*regexp.Regexp
     S3Uploader      S3Uploader
 }
 
 type RepoConfig struct {
     S3Region        string
     S3Bucket        string
+    Ignore          []string
 }
 
 func OpenRepository() (*Repository, error) {
@@ -66,6 +69,25 @@ func (repo *Repository) ReadConfigFile() error {
     if err != nil {
         return err
     }
+
+    err = repo.CompileIgnoreRegexes()
+    if err != nil {
+        return err
+    }
+
+    return nil
+}
+
+func (repo *Repository) CompileIgnoreRegexes() error {
+    for _, regexStr := range repo.Config.Ignore {
+        regex, err := regexp.Compile(regexStr)
+        if err != nil {
+            return err
+        }
+
+        repo.IgnoreRegexes = append(repo.IgnoreRegexes, regex)
+    }
+
     return nil
 }
 
@@ -111,7 +133,24 @@ func (repo *Repository) FindRelevantCommits() error {
 
 func (repo *Repository) ReadGitModifiedFiles(scanner *bufio.Scanner, stop chan bool)  {
     for scanner.Scan() {
-        repo.UnpushedFiles.Add(scanner.Text())
+        file := scanner.Text()
+
+        if _, err := os.Stat(file); os.IsNotExist(err) {
+            continue
+        }
+
+        matched := false
+        for _, regex := range repo.IgnoreRegexes {
+            if regex.Match([]byte(file)) {
+                fmt.Println("Skipping file " + file + " matches ignore spec " + regex.String())
+                matched = true
+                break
+            }
+        }
+
+        if !matched {
+            repo.UnpushedFiles.Add(scanner.Text())
+        }
     }
 
     stop <- true
