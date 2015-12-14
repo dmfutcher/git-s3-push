@@ -157,7 +157,7 @@ func (repo *Repository) ReadGitModifiedFiles(scanner *bufio.Scanner, stop chan b
 }
 
 func (repo *Repository) FindCommitModifiedFiles(commit *gogit.Commit) error {
-    cmd := exec.Command("git", "diff-tree", "--no-commit-id", "--name-only", "--root", commit.Id().String())
+    cmd := exec.Command("git", "show", "--name-only", "--oneline", commit.Id().String())
     out, err := cmd.StdoutPipe()
     if err != nil {
         return err
