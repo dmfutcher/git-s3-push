@@ -34,6 +34,7 @@ type RepoConfig struct {
     S3Region        string
     S3Bucket        string
     Ignore          []string
+    IncludeNonGit   []string
 }
 
 func OpenRepository() (*Repository, error) {
@@ -271,6 +272,7 @@ func main() {
     flag.StringVar(&repo.Config.S3Bucket, "b", repo.Config.S3Bucket, "Destination S3 bucket name")
     flag.StringVar(&repo.Config.S3Region, "r", repo.Config.S3Region, "AWS region of destination bucket")
     saveConfig := flag.Bool("save", false, "Save destination region/bucket to config file")
+    forceNonTracked := flag.Bool("force-external", false, "Force the upload of files not tracked in git (IncludeNonGit files in config)")
     flag.Parse()
 
     if repo.Config.S3Bucket == "" {
@@ -293,8 +295,21 @@ func main() {
 
     repo.FindUnpushedModifiedFiles();
 
-    if repo.UnpushedFiles.Cardinality() == 0 {
+    if repo.UnpushedFiles.Cardinality() == 0 && !*forceNonTracked {
         fmt.Println("No modified files to push")
+        os.Exit(0)
+    }
+
+    for _, includedFile := range repo.Config.IncludeNonGit {
+        if _, err := os.Stat(includedFile); os.IsNotExist(err) {
+            continue
+        }
+
+        repo.UnpushedFiles.Add(includedFile)
+    }
+
+    if repo.UnpushedFiles.Cardinality() == 0 {
+        fmt.Println("No files to push")
         os.Exit(0)
     }
 
