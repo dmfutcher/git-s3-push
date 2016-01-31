@@ -10,12 +10,28 @@ It can be used for deploying [static websites hosted on S3](http://docs.aws.amaz
 
 ## Usage
 Authentication credentials are taken from the standard AWS environment variables. Bucket name and AWS region are supplied as arguments.
-```$ export AWS_ACCESS_KEY_ID=<...>
-$ export AWS_SECRET_ACCESS_KEY=<...>
-$ git-s3-push -b my-bucket-name -r aws-region-1 -save```
+
+```$ export AWS_ACCESS_KEY_ID=<...>```
+
+```$ export AWS_SECRET_ACCESS_KEY=<...>```
+
+```$ git-s3-push -b my-bucket-name -r aws-region-1 -save```
 
 The `-save` flag stores the bucket name and region so you can push to the same location by just running:
+
+
 ```$ git-s3-push```
+
+All usage options can be shown using the `-help` flag.
+
+## Config
+After using the `-save- flag, `git-s3-push` creates a JSON configuration file (`.git_s3_push`) storing bucket and region information. This file also includes other configuration directives that cannot be specified using flags:
+
+- `Ignore`: Files in the git repo that *should not* be pushed. This could include source files (for example .coffee files), or any other file in the git repository you don't want pushed to the S3 bucket. Files are specified in a JSON list of Go regexes. For example:
+
+`"Ignore":[".*\\.coffee"]`
+
+- `IncludeNonGit`: Files not tracked by git that should be pushed to the destination bucket. Files are specified in a JSON list of paths. Paths can be absolute or relative to the root of the git repository.
 
 ## License 
 * MIT license. See the [LICENSE](https://github.com/bobbo/git-s3-push/blob/master/LICENSE) file.
