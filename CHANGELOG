@@ -1,0 +1,8 @@
+## [0.1.0] - 2016-01-31
+
+ - Initial release.
+ - Upload files to S3 buckets.
+ - Track which git commits have been uploaded, only upload files that have changed since last push.
+ - Configuration file saves bucket/region arguments for simplified subsequent uploads.
+ - Files tracked in git can be ignored (not uploaded) using a configuration directive, supporting basic regexes.
+ - Files not tracked in git can be specified to be uploaded. A runtime flag can be given to force the upload of these files when no changes are made to git files.

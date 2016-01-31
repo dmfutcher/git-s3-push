@@ -8,6 +8,12 @@ It can be used for deploying [static websites hosted on S3](http://docs.aws.amaz
 - Fast uploads by only uploading new commits.
 - Single binary, no [dependencies on language runtimes](https://github.com/schickling/git-s3)
 
+## Installation
+
+Grab a binary for your platform from the releases. Or check out the code, run `go get` and `go run git-s3-push.go`. 
+
+Git must be installed on your path.
+
 ## Usage
 Authentication credentials are taken from the standard AWS environment variables. Bucket name and AWS region are supplied as arguments.
 

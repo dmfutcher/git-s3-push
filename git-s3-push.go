@@ -184,7 +184,7 @@ func (repo *Repository) FindUnpushedModifiedFiles() error {
     visited := mapset.NewSet();
 
     currentCommit := repo.HeadCommit;
-    for currentCommit != nil && currentCommit.ParentCount() > 0 {
+    for currentCommit != nil  {
         if repo.LastPushCommit != nil && repo.LastPushCommit.Id().Equal(currentCommit.Id()) {
             break;
         }
