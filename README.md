@@ -25,7 +25,7 @@ The `-save` flag stores the bucket name and region so you can push to the same l
 All usage options can be shown using the `-help` flag.
 
 ## Config
-After using the `-save- flag, `git-s3-push` creates a JSON configuration file (`.git_s3_push`) storing bucket and region information. This file also includes other configuration directives that cannot be specified using flags:
+After using the `-save` flag, `git-s3-push` creates a JSON configuration file (`.git_s3_push`) storing bucket and region information. This file also includes other configuration directives that cannot be specified using flags:
 
 - `Ignore`: Files in the git repo that *should not* be pushed. This could include source files (for example .coffee files), or any other file in the git repository you don't want pushed to the S3 bucket. Files are specified in a JSON list of Go regexes. For example:
 
