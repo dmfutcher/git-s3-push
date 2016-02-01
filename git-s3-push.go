@@ -132,7 +132,7 @@ func (repo *Repository) FindRelevantCommits() error {
     return nil
 }
 
-func (repo *Repository) ReadGitModifiedFiles(scanner *bufio.Scanner, stop chan bool)  {
+func (repo *Repository) ReadGitModifiedFiles(scanner *bufio.Scanner)  {
     for scanner.Scan() {
         file := scanner.Text()
 
@@ -153,8 +153,6 @@ func (repo *Repository) ReadGitModifiedFiles(scanner *bufio.Scanner, stop chan b
             repo.UnpushedFiles.Add(scanner.Text())
         }
     }
-
-    stop <- true
 }
 
 func (repo *Repository) FindCommitModifiedFiles(commit *gogit.Commit) error {
@@ -171,9 +169,7 @@ func (repo *Repository) FindCommitModifiedFiles(commit *gogit.Commit) error {
 
     scanner := bufio.NewScanner(out)
 
-    stop := make(chan bool)
-    go repo.ReadGitModifiedFiles(scanner, stop)
-    <-stop
+    repo.ReadGitModifiedFiles(scanner)
     cmd.Wait()
 
     return nil
