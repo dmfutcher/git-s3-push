@@ -15,6 +15,7 @@ import (
     "github.com/aws/aws-sdk-go/service/s3/s3manager"
     "github.com/deckarep/golang-set"
     "path/filepath"
+    "strings"
 )
 
 const REF_S3_PUSH string = "refs/heads/s3-pushed"
@@ -81,6 +82,7 @@ func (repo *Repository) ReadConfigFile() error {
 
 func (repo *Repository) CompileIgnoreRegexes() error {
     for _, regexStr := range repo.Config.Ignore {
+        regexStr = strings.Replace("*", "(.*)")
         regex, err := regexp.Compile(regexStr)
         if err != nil {
             return err
