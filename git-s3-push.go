@@ -16,6 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/deckarep/golang-set"
+	"github.com/rakyll/magicmime"
 	"github.com/speedata/gogit"
 )
 
@@ -246,10 +247,17 @@ func (uploader s3Uploader) UploadFile(path string) error {
 		return err
 	}
 
+	contentType, err := magicmime.TypeByFile(path)
+	if err != nil {
+		fmt.Println("Couldn't automatically determine content type of ", path, err)
+		contentType = "binary/octet-stream"
+	}
+
 	result, err := uploader.s3Uploader.Upload(&s3manager.UploadInput{
-		Body:   file,
-		Bucket: uploader.BucketName,
-		Key:    aws.String(path),
+		Body:        file,
+		Bucket:      uploader.BucketName,
+		Key:         aws.String(path),
+		ContentType: &contentType,
 	})
 
 	if err != nil {
@@ -313,6 +321,11 @@ func main() {
 	}
 
 	uploader := initS3Uploader(repo.Config)
+	if err = magicmime.Open(magicmime.MAGIC_MIME_TYPE | magicmime.MAGIC_SYMLINK | magicmime.MAGIC_ERROR); err != nil {
+		fmt.Println(err)
+		os.Exit(0)
+	}
+	defer magicmime.Close()
 
 	for filePath := range repo.UnpushedFiles.Iter() {
 		fmt.Println("Uploading: ", filePath.(string))
