@@ -1,3 +1,8 @@
+## [0.1.1] - 2016-07-05
+
+ - Significantly rewritten code to linter standards
+ - Support simple asterisk globbing (for example *.go) in Ignore configuration
+
 ## [0.1.0] - 2016-01-31
 
  - Initial release.
