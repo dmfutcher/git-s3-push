@@ -50,7 +50,7 @@ func (uploader S3Uploader) UploadFile(path string) error {
 	contentType, err := uploader.mimeGuesser.mimeTypeFromPath(path)
 	if err != nil {
 		fmt.Println("Couldn't automatically determine content type of ", path, err)
-		contentType = "binary/octet-stream"
+		contentType = "text/plain"
 	}
 
 	result, err := uploader.s3Uploader.Upload(&s3manager.UploadInput{
