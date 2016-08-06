@@ -1,6 +1,7 @@
 ## [0.2.0] -
 
  - Automatically detect content type of file when uploading. Stops users having to manually change mime-types for use-cases where content type is important (static websites). Issue #2
+ - Add option to make files publicly readable (use -public flag)
  - Completely reorganised source code (using packages), added top level comments
 
 ## [0.1.1] - 2016-07-05

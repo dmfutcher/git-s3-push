@@ -32,6 +32,7 @@ type Repository struct {
 type repoConfig struct {
 	S3Region      string
 	S3Bucket      string
+	Public        bool
 	Ignore        []string
 	IncludeNonGit []string
 }

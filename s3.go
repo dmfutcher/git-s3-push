@@ -9,9 +9,13 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
 
+const cannedAclPublicRead = "public-read"
+const cannedAclPrivate = "private"
+
 // S3Uploader manages S3 uploads to a specific bucket
 type S3Uploader struct {
-	BucketName  *string
+	bucketName  *string
+	public      bool
 	s3Uploader  *s3manager.Uploader
 	mimeGuesser mimeTypeGuesser
 }
@@ -25,7 +29,8 @@ type mimeTypeGuesser interface {
 // InitS3Uploader initializes a new S3Uploader
 func InitS3Uploader(config repoConfig) (*S3Uploader, error) {
 	uploader := new(S3Uploader)
-	uploader.BucketName = aws.String(config.S3Bucket)
+	uploader.bucketName = aws.String(config.S3Bucket)
+	uploader.public = config.Public
 
 	s3config := aws.Config{Region: aws.String(config.S3Region)}
 	s3uploader := s3manager.NewUploader(session.New(&s3config))
@@ -53,11 +58,19 @@ func (uploader S3Uploader) UploadFile(path string) error {
 		contentType = "text/plain"
 	}
 
+	var acl string
+	if uploader.public {
+		acl = cannedAclPublicRead
+	} else {
+		acl = cannedAclPrivate
+	}
+
 	result, err := uploader.s3Uploader.Upload(&s3manager.UploadInput{
 		Body:        file,
-		Bucket:      uploader.BucketName,
+		Bucket:      uploader.bucketName,
 		Key:         aws.String(path),
 		ContentType: &contentType,
+		ACL:         &acl,
 	})
 
 	if err != nil {
