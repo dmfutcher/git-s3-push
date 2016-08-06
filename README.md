@@ -1,6 +1,6 @@
 git-s3-push
 ===========
-**git-s3-push** is a tool to deploy git repositories to AWS S3 buckets. **git-s3-push** keeps track of which commits have been pushed and supports deploying only recently modified files. 
+**git-s3-push** is a tool to deploy git repositories to AWS S3 buckets. **git-s3-push** keeps track of which commits have been pushed and supports deploying only recently modified files.
 It can be used for deploying [static websites hosted on S3](http://docs.aws.amazon.com/AmazonS3/latest/dev/WebsiteHosting.html), maintaining versioned bucket data or using S3 to backup git repositories.
 
 ## Features
@@ -10,7 +10,9 @@ It can be used for deploying [static websites hosted on S3](http://docs.aws.amaz
 
 ## Installation
 
-Grab a binary for your platform from the releases. Or check out the code, run `go get` and `go run git-s3-push.go`. 
+git-s3-push depends on [`magicmime`](https://github.com/rakyll/magicmime), which in turn depends on `libmagic`. On Arch install the `file` package, on Debian based systems you need `libmagic1` and `libmagic-devel`.
+
+Grab a binary for your platform from the releases. Or check out the code, run `go get` and `go run git-s3-push.go`.
 
 Git must be installed on your path.
 
@@ -39,5 +41,5 @@ After using the `-save` flag, `git-s3-push` creates a JSON configuration file (`
 
 - `IncludeNonGit`: Files not tracked by git that should be pushed to the destination bucket. Files are specified in a JSON list of paths. Paths can be absolute or relative to the root of the git repository.
 
-## License 
+## License
 * MIT license. See the [LICENSE](https://github.com/bobbo/git-s3-push/blob/master/LICENSE) file.
