@@ -6,8 +6,6 @@ import (
 	"os"
 
 	"github.com/bobbo/git-s3-push"
-
-	"github.com/rakyll/magicmime"
 )
 
 func main() {
@@ -62,12 +60,12 @@ func main() {
 		os.Exit(0)
 	}
 
-	uploader := s3push.InitS3Uploader(repo.Config)
-	if err = magicmime.Open(magicmime.MAGIC_MIME_TYPE | magicmime.MAGIC_SYMLINK | magicmime.MAGIC_ERROR); err != nil {
+	uploader, err := s3push.InitS3Uploader(repo.Config)
+	if err != nil {
 		fmt.Println(err)
-		os.Exit(0)
+		os.Exit(1)
 	}
-	defer magicmime.Close()
+	defer uploader.Close()
 
 	for filePath := range repo.UnpushedFiles.Iter() {
 		fmt.Println("Uploading: ", filePath.(string))
