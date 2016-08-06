@@ -1,9 +1,8 @@
-package main
+package s3push
 
 import (
 	"bufio"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -12,25 +11,22 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/deckarep/golang-set"
-	"github.com/rakyll/magicmime"
 	"github.com/speedata/gogit"
 )
 
 const refS3Push string = "refs/heads/s3-pushed"
 const configFilePath string = ".git_s3_push"
 
-type repository struct {
+// Repository represents a git-s3-push enabled git repository
+type Repository struct {
 	GitRepo        *gogit.Repository
 	HeadCommit     *gogit.Commit
 	LastPushCommit *gogit.Commit
 	UnpushedFiles  mapset.Set
 	Config         repoConfig
 	IgnoreRegexes  []*regexp.Regexp
-	s3Uploader     s3Uploader
+	s3Uploader     S3Uploader
 }
 
 type repoConfig struct {
@@ -40,8 +36,9 @@ type repoConfig struct {
 	IncludeNonGit []string
 }
 
-func openRepository() (*repository, error) {
-	repo := new(repository)
+// OpenRepository opens and initialises a 'git-s3-push' enabled git repository
+func OpenRepository() (*Repository, error) {
+	repo := new(Repository)
 	repo.UnpushedFiles = mapset.NewSet()
 
 	wd, err := os.Getwd()
@@ -63,7 +60,8 @@ func openRepository() (*repository, error) {
 	return repo, nil
 }
 
-func (repo *repository) ReadConfigFile() error {
+// ReadConfigFile reads .git_s3_push configuration file from repo
+func (repo *Repository) ReadConfigFile() error {
 	file, err := ioutil.ReadFile(configFilePath)
 	if err != nil {
 		return err
@@ -82,7 +80,8 @@ func (repo *repository) ReadConfigFile() error {
 	return nil
 }
 
-func (repo *repository) CompileIgnoreRegexes() error {
+// CompileIgnoreRegexes compiles the regexes in the Ignore configuration directive
+func (repo *Repository) CompileIgnoreRegexes() error {
 	for _, regexStr := range repo.Config.Ignore {
 		regexStr = strings.Replace(regexStr, "*", "(.*)", -1)
 		regex, err := regexp.Compile(regexStr)
@@ -96,7 +95,8 @@ func (repo *repository) CompileIgnoreRegexes() error {
 	return nil
 }
 
-func (repo repository) SaveConfigToFile() error {
+// SaveConfigToFile marshals the current configuration to JSON and saves it to .git_s3_push
+func (repo Repository) SaveConfigToFile() error {
 	jsonData, err := json.Marshal(repo.Config)
 	if err != nil {
 		return err
@@ -110,7 +110,8 @@ func (repo repository) SaveConfigToFile() error {
 	return nil
 }
 
-func (repo *repository) FindRelevantCommits() error {
+// FindRelevantCommits calls git to find commits not pushed to S3
+func (repo *Repository) FindRelevantCommits() error {
 	headRef, err := repo.GitRepo.LookupReference("HEAD")
 	if err != nil {
 		return err
@@ -136,7 +137,8 @@ func (repo *repository) FindRelevantCommits() error {
 	return nil
 }
 
-func (repo *repository) ReadGitModifiedFiles(scanner *bufio.Scanner) {
+// ReadGitModifiedFiles reads the git output describe files modified since last S3 push
+func (repo *Repository) ReadGitModifiedFiles(scanner *bufio.Scanner) {
 	for scanner.Scan() {
 		file := scanner.Text()
 
@@ -159,7 +161,8 @@ func (repo *repository) ReadGitModifiedFiles(scanner *bufio.Scanner) {
 	}
 }
 
-func (repo *repository) FindCommitModifiedFiles(commit *gogit.Commit) error {
+// FindCommitModifiedFiles finds files modified in given commit
+func (repo *Repository) FindCommitModifiedFiles(commit *gogit.Commit) error {
 	cmd := exec.Command("git", "show", "--name-only", "--oneline", commit.Id().String())
 	out, err := cmd.StdoutPipe()
 	if err != nil {
@@ -179,7 +182,8 @@ func (repo *repository) FindCommitModifiedFiles(commit *gogit.Commit) error {
 	return nil
 }
 
-func (repo *repository) FindUnpushedModifiedFiles() error {
+// FindUnpushedModifiedFiles finds files that have been modified since last push to S3
+func (repo *Repository) FindUnpushedModifiedFiles() error {
 	queue := []*gogit.Commit{}
 	visited := mapset.NewSet()
 
@@ -212,7 +216,8 @@ func (repo *repository) FindUnpushedModifiedFiles() error {
 	return nil
 }
 
-func (repo repository) UpdateGitLastPushRef() error {
+// UpdateGitLastPushRef sets the git-s3-push branch to the latest commit pushed
+func (repo Repository) UpdateGitLastPushRef() error {
 	newLastPushRef := repo.HeadCommit.Id().String()
 	cmd := exec.Command("git", "update-ref", refS3Push, newLastPushRef)
 
@@ -223,121 +228,4 @@ func (repo repository) UpdateGitLastPushRef() error {
 
 	cmd.Wait()
 	return nil
-}
-
-type s3Uploader struct {
-	BucketName *string
-	s3Uploader *s3manager.Uploader
-}
-
-func initS3Uploader(config repoConfig) *s3Uploader {
-	uploader := new(s3Uploader)
-	uploader.BucketName = aws.String(config.S3Bucket)
-
-	s3config := aws.Config{Region: aws.String(config.S3Region)}
-	s3uploader := s3manager.NewUploader(session.New(&s3config))
-	uploader.s3Uploader = s3uploader
-
-	return uploader
-}
-
-func (uploader s3Uploader) UploadFile(path string) error {
-	file, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-
-	contentType, err := magicmime.TypeByFile(path)
-	if err != nil {
-		fmt.Println("Couldn't automatically determine content type of ", path, err)
-		contentType = "binary/octet-stream"
-	}
-
-	result, err := uploader.s3Uploader.Upload(&s3manager.UploadInput{
-		Body:        file,
-		Bucket:      uploader.BucketName,
-		Key:         aws.String(path),
-		ContentType: &contentType,
-	})
-
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(result.Location)
-	return nil
-}
-
-func main() {
-	repo, err := openRepository()
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	repo.ReadConfigFile()
-
-	flag.StringVar(&repo.Config.S3Bucket, "b", repo.Config.S3Bucket, "Destination S3 bucket name")
-	flag.StringVar(&repo.Config.S3Region, "r", repo.Config.S3Region, "AWS region of destination bucket")
-	saveConfig := flag.Bool("save", false, "Save destination region/bucket to config file")
-	forceNonTracked := flag.Bool("force-external", false, "Force the upload of files not tracked in git (IncludeNonGit files in config)")
-	flag.Parse()
-
-	if repo.Config.S3Bucket == "" {
-		flag.Usage()
-		os.Exit(1)
-	} else if repo.Config.S3Region == "" {
-		flag.Usage()
-		os.Exit(1)
-	} else if *saveConfig {
-		err = repo.SaveConfigToFile()
-		if err != nil {
-			fmt.Println("WARNING: Failed to save config to file: ", err)
-		}
-	}
-
-	if err = repo.FindRelevantCommits(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-
-	repo.FindUnpushedModifiedFiles()
-
-	if repo.UnpushedFiles.Cardinality() == 0 && !*forceNonTracked {
-		fmt.Println("No modified files to push")
-		os.Exit(0)
-	}
-
-	for _, includedFile := range repo.Config.IncludeNonGit {
-		if _, err = os.Stat(includedFile); os.IsNotExist(err) {
-			continue
-		}
-
-		repo.UnpushedFiles.Add(includedFile)
-	}
-
-	if repo.UnpushedFiles.Cardinality() == 0 {
-		fmt.Println("No files to push")
-		os.Exit(0)
-	}
-
-	uploader := initS3Uploader(repo.Config)
-	if err = magicmime.Open(magicmime.MAGIC_MIME_TYPE | magicmime.MAGIC_SYMLINK | magicmime.MAGIC_ERROR); err != nil {
-		fmt.Println(err)
-		os.Exit(0)
-	}
-	defer magicmime.Close()
-
-	for filePath := range repo.UnpushedFiles.Iter() {
-		fmt.Println("Uploading: ", filePath.(string))
-		err = uploader.UploadFile(filePath.(string))
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-	}
-
-	err = repo.UpdateGitLastPushRef()
-	if err != nil {
-		fmt.Println("Failed to update LAST_S3_PUSH ref with git: ", err)
-	}
 }
