@@ -6,15 +6,19 @@ It can be used for deploying [static websites hosted on S3](http://docs.aws.amaz
 ## Features
 - Simple method to deploy git repos to S3.
 - Fast uploads by only uploading new commits.
-- Single binary, no [dependencies on language runtimes](https://github.com/schickling/git-s3)
+- Automatically detects and sets the S3 content type of files.
+- Can automatically make your files publicly available (private by default).
+- Single binary, no [dependencies on language runtimes](https://github.com/schickling/git-s3).
 
 ## Installation
-
-git-s3-push depends on [`magicmime`](https://github.com/rakyll/magicmime), which in turn depends on `libmagic`. On Arch install the `file` package, on Debian based systems you need `libmagic1` and `libmagic-devel`.
 
 Grab a binary for your platform from the releases. Or check out the code, run `go get` and `go run git-s3-push.go`.
 
 Git must be installed on your path.
+
+### Dependencies
+
+On Unix-like platforms (Linux, Mas OS, BSDs etc.) `git-s3-push` depends on [`magicmime`](https://github.com/rakyll/magicmime) for file content-type detection, which in turn depends on `libmagic`. On Arch install the `file` package, on Debian based systems you need `libmagic1` and `libmagic-devel`, on Mac OS run `brew install libmagic`. This is *not* required on Windows, which uses Golang's built-in mimetype detection.
 
 ## Usage
 Authentication credentials are taken from the standard AWS environment variables. Bucket name and AWS region are supplied as arguments.
@@ -30,14 +34,14 @@ The `-save` flag stores the bucket name and region so you can push to the same l
 
 ```$ git-s3-push```
 
+The `-public` flag can be used to make the files uploaded to your bucket publicly readable. When running without the `-public` flag, pushed files are stored privately.
+
 All usage options can be shown using the `-help` flag.
 
 ## Config
 After using the `-save` flag, `git-s3-push` creates a JSON configuration file (`.git_s3_push`) storing bucket and region information. This file also includes other configuration directives that cannot be specified using flags:
 
-- `Ignore`: Files in the git repo that *should not* be pushed. This could include source files (for example .coffee files), or any other file in the git repository you don't want pushed to the S3 bucket. Files are specified in a JSON list of Go regexes. For example:
-
-`"Ignore":[".*\\.coffee"]`
+- `Ignore`: Files in the git repo that *should not* be pushed. This could include source files (for example .coffee files), or any other file in the git repository you don't want pushed to the S3 bucket. Files are specified in a JSON list of regexes. For example: `"Ignore":["src/*.coffee"]`
 
 - `IncludeNonGit`: Files not tracked by git that should be pushed to the destination bucket. Files are specified in a JSON list of paths. Paths can be absolute or relative to the root of the git repository.
 
