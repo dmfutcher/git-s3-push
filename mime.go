@@ -1,23 +1,33 @@
-//+build linux openbsd netbsd freebsd plan9 solaris darwin dragonfly
-
 package s3push
 
-import "github.com/rakyll/magicmime"
+import (
+    "errors"
+    "mime"
+    "path"
+)
 
-type unixMimeGuesser struct{}
+type mimeGuesser struct{}
 
 func newMimeGuesser() mimeTypeGuesser {
-	return unixMimeGuesser{}
+	return mimeGuesser{}
 }
 
-func (g unixMimeGuesser) init() error {
-	return magicmime.Open(magicmime.MAGIC_MIME_TYPE | magicmime.MAGIC_SYMLINK | magicmime.MAGIC_ERROR)
+func (g mimeGuesser) init() error {
+	return nil
 }
 
-func (g unixMimeGuesser) close() {
-	magicmime.Close()
-}
+func (g mimeGuesser) close() {}
 
-func (g unixMimeGuesser) mimeTypeFromPath(path string) (string, error) {
-	return magicmime.TypeByFile(path)
+func (g mimeGuesser) mimeTypeFromPath(filePath string) (string, error) {
+	ext := path.Ext(filePath)
+    if ext == "" {
+        return "", errors.New("No file extension")
+    }
+
+    mimeType := mime.TypeByExtension(ext)
+    if mimeType == "" {
+        return "", errors.New("Mime type unknown")
+    }
+
+    return mimeType, nil
 }

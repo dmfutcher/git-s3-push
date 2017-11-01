@@ -16,10 +16,6 @@ Grab a binary for your platform from the releases. Or check out the code, run `g
 
 Git must be installed on your path.
 
-### Dependencies
-
-On Unix-like platforms (Linux, Mac OS, BSDs etc.) `git-s3-push` depends on [`magicmime`](https://github.com/rakyll/magicmime) for file content-type detection, which in turn depends on `libmagic`. On Arch install the `file` package, on Debian based systems you need `libmagic1` and `libmagic-devel`, on Mac OS run `brew install libmagic`. This is *not* required on Windows, which uses Golang's built-in mimetype detection.
-
 ## Usage
 Authentication credentials are taken from the standard AWS environment variables. Bucket name and AWS region are supplied as arguments.
 
