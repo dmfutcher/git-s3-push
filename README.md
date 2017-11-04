@@ -1,5 +1,8 @@
 git-s3-push
 ===========
+[![Build Status](https://travis-ci.org/bobbo/git-s3-push.svg?branch=master)](https://travis-ci.org/bobbo/git-s3-push)
+[![Go Report Card](https://goreportcard.com/badge/github.com/bobbo/git-s3-push)](https://goreportcard.com/report/github.com/bobbo/git-s3-push)
+
 **git-s3-push** is a tool to deploy git repositories to AWS S3 buckets. **git-s3-push** keeps track of which commits have been pushed and supports deploying only recently modified files.
 It can be used for deploying [static websites hosted on S3](http://docs.aws.amazon.com/AmazonS3/latest/dev/WebsiteHosting.html), maintaining versioned bucket data or using S3 to backup git repositories.
 
