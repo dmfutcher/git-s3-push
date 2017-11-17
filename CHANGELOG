@@ -1,3 +1,10 @@
+## [0.2.1] - 2017-11-17
+
+ - Improve file-type detection by dropping libmagic on *nix platforms (Issue #7)
+ - Add macOS High Sierra support (bump golang version for binaries to 1.19) (Issue #6)
+
+   Thanks to Paul Bailey (@pizzapanther) for his help with this release
+
 ## [0.2.0] - 2016-08-06
 
  - Automatically detect content type of file when uploading. Stops users having to manually change mime-types for use-cases where content type is important (static websites). Issue #2
