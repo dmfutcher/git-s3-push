@@ -2,6 +2,7 @@ package s3push
 
 import (
 	"fmt"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -17,6 +18,7 @@ type S3Uploader struct {
 	bucketName  *string
 	public      bool
 	s3Uploader  *s3manager.Uploader
+	s3Svc       *s3.S3
 	mimeGuesser mimeTypeGuesser
 }
 
@@ -33,11 +35,16 @@ func InitS3Uploader(config repoConfig) (*S3Uploader, error) {
 	uploader.public = config.Public
 
 	s3config := aws.Config{Region: aws.String(config.S3Region)}
-	s3uploader := s3manager.NewUploader(session.New(&s3config))
-	uploader.s3Uploader = s3uploader
+	s3Session, err := session.NewSession(&s3config)
+	if err != nil {
+		return nil, err
+	}
+
+	uploader.s3Uploader = s3manager.NewUploader(s3Session)
+	uploader.s3Svc = s3.New(s3Session)
 
 	uploader.mimeGuesser = newMimeGuesser()
-	err := uploader.mimeGuesser.init()
+	err = uploader.mimeGuesser.init()
 	if err != nil {
 		return nil, err
 	}
@@ -45,8 +52,33 @@ func InitS3Uploader(config repoConfig) (*S3Uploader, error) {
 	return uploader, nil
 }
 
+func (uploader S3Uploader) deleteFile(path string) error {
+	key := aws.String(uploader.prefix + path)
+	_, err := uploader.s3Svc.DeleteObject(&s3.DeleteObjectInput{
+		Bucket: uploader.bucketName,
+		Key:    key,
+	})
+
+	if err != nil {
+		return err
+	}
+
+	err = uploader.s3Svc.WaitUntilObjectNotExists(&s3.HeadObjectInput{
+		Bucket: uploader.bucketName,
+		Key:    key,
+	})
+
+	return err
+}
+
 // UploadFile uploads a file to S3
 func (uploader S3Uploader) UploadFile(path string) error {
+
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		// Uploading a file which does not exist means delete it
+		return uploader.deleteFile(path)
+	}
+
 	file, err := os.Open(path)
 	if err != nil {
 		return err

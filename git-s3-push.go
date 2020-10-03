@@ -143,10 +143,6 @@ func (repo *Repository) ReadGitModifiedFiles(scanner *bufio.Scanner) {
 	for scanner.Scan() {
 		file := scanner.Text()
 
-		if _, err := os.Stat(file); os.IsNotExist(err) {
-			continue
-		}
-
 		matched := false
 		for _, regex := range repo.IgnoreRegexes {
 			if regex.Match([]byte(file)) {
