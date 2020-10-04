@@ -7,17 +7,22 @@ git-s3-push
 It can be used for deploying [static websites hosted on S3](http://docs.aws.amazon.com/AmazonS3/latest/dev/WebsiteHosting.html), maintaining versioned bucket data or using S3 to backup git repositories.
 
 ## Features
-- Simple method to deploy git repos to S3.
-- Fast uploads by only uploading new commits.
-- Automatically detects and sets the S3 content type of files.
-- Can automatically make your files publicly available (private by default).
-- Single binary, no [dependencies on language runtimes](https://github.com/schickling/git-s3).
+- Simple method to deploy git repos to S3
+- Fast uploads by only uploading new commits
+- Automatically detects and sets the S3 content type of files
+- Can automatically make your files publicly available (private by default)
+- Single binary, no dependencies on language runtime
 
 ## Installation
 
-Grab a binary for your platform from the releases. Or check out the code, run `go get` and `go run git-s3-push.go`.
+Grab a binary for your platform from the releases. Git must be installed on your path.
 
-Git must be installed on your path.
+
+#### Build from Source
+
+Clone `git-s3-push` and `cd` into the repo root. Run `go build cmd/git-s3-push.go`, which will create a `git-s3-push`
+binary in your working directory. You can also skip the build step and use `go run cmd/git-s3-push.go`.
+
 
 ## Usage
 Authentication credentials are taken from the standard AWS environment variables. Bucket name and AWS region are supplied as arguments.
