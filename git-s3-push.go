@@ -16,6 +16,7 @@ import (
 )
 
 const refS3Push string = "refs/heads/s3-pushed"
+const prefixRefS3 string = "refs/heads/git-s3-push/"
 const configFilePath string = ".git_s3_push"
 
 // Repository represents a git-s3-push enabled git repository
@@ -33,6 +34,7 @@ type repoConfig struct {
 	S3Region      string
 	S3Bucket      string
 	Public        bool
+	Prefix        string
 	Ignore        []string
 	IncludeNonGit []string
 }
@@ -124,7 +126,7 @@ func (repo *Repository) FindRelevantCommits() error {
 	}
 	repo.HeadCommit = headCommit
 
-	lastPushRef, err := repo.GitRepo.LookupReference(refS3Push)
+	lastPushRef, err := repo.GitRepo.LookupReference(repo.getRefName())
 	if err != nil {
 		return nil
 	}
@@ -216,7 +218,7 @@ func (repo *Repository) FindUnpushedModifiedFiles() error {
 // UpdateGitLastPushRef sets the git-s3-push branch to the latest commit pushed
 func (repo Repository) UpdateGitLastPushRef() error {
 	newLastPushRef := repo.HeadCommit.Id().String()
-	cmd := exec.Command("git", "update-ref", refS3Push, newLastPushRef)
+	cmd := exec.Command("git", "update-ref", repo.getRefName(), newLastPushRef)
 
 	err := cmd.Start()
 	if err != nil {
@@ -225,4 +227,13 @@ func (repo Repository) UpdateGitLastPushRef() error {
 
 	cmd.Wait()
 	return nil
+}
+
+func (repo *Repository) getRefName() string {
+	ref := refS3Push
+	if len(repo.Config.Prefix) > 0 {
+		ref = prefixRefS3 + repo.Config.Prefix
+	}
+
+	return ref
 }
