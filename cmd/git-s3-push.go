@@ -50,10 +50,6 @@ func main() {
 	}
 
 	for _, includedFile := range repo.Config.IncludeNonGit {
-		if _, err = os.Stat(includedFile); os.IsNotExist(err) {
-			continue
-		}
-
 		repo.UnpushedFiles.Add(includedFile)
 	}
 
@@ -70,7 +66,7 @@ func main() {
 	defer uploader.Close()
 
 	for filePath := range repo.UnpushedFiles.Iter() {
-		fmt.Println("Uploading: ", filePath.(string))
+		fmt.Println("Processing: ", filePath.(string))
 		err = uploader.UploadFile(filePath.(string))
 		if err != nil {
 			fmt.Println(err)
