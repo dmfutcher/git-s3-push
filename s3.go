@@ -15,6 +15,7 @@ const cannedAclPrivate = "private"
 
 // S3Uploader manages S3 uploads to a specific bucket
 type S3Uploader struct {
+	endpoint 	string
 	bucketName  *string
 	prefix      string
 	public      bool
@@ -35,13 +36,20 @@ func InitS3Uploader(config repoConfig) (*S3Uploader, error) {
 	uploader.bucketName = aws.String(config.S3Bucket)
 	uploader.public = config.Public
 	uploader.prefix = config.Prefix
+	uploader.endpoint = config.Endpoint
 
 	if len(uploader.prefix) > 0 && uploader.prefix[len(uploader.prefix)-1:] != "/" {
 		uploader.prefix = uploader.prefix + "/"
 	}
 
 	s3config := aws.Config{Region: aws.String(config.S3Region)}
+
+	if uploader.endpoint != "" {
+		s3config = aws.Config{Region: aws.String(config.S3Region), Endpoint: aws.String(uploader.endpoint)}
+	}
+
 	s3Session, err := session.NewSession(&s3config)
+
 	if err != nil {
 		return nil, err
 	}
@@ -60,6 +68,7 @@ func InitS3Uploader(config repoConfig) (*S3Uploader, error) {
 
 func (uploader S3Uploader) deleteFile(path string) error {
 	key := aws.String(uploader.prefix + path)
+
 	_, err := uploader.s3Svc.DeleteObject(&s3.DeleteObjectInput{
 		Bucket: uploader.bucketName,
 		Key:    key,

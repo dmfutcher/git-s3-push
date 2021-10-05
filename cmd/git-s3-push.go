@@ -16,6 +16,7 @@ func main() {
 	}
 	repo.ReadConfigFile()
 
+	flag.StringVar(&repo.Config.Endpoint, "endpoint", repo.Config.Endpoint, "Custom S3 endpoint")
 	flag.StringVar(&repo.Config.S3Bucket, "b", repo.Config.S3Bucket, "Destination S3 bucket name")
 	flag.StringVar(&repo.Config.S3Region, "r", repo.Config.S3Region, "AWS region of destination bucket")
 	flag.StringVar(&repo.Config.Prefix, "p", repo.Config.Prefix, "Prefix location in bucket to push to")

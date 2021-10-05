@@ -31,6 +31,7 @@ type Repository struct {
 }
 
 type repoConfig struct {
+	Endpoint	  string
 	S3Region      string
 	S3Bucket      string
 	Public        bool
