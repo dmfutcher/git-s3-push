@@ -35,7 +35,9 @@ Authentication credentials are taken from the standard AWS environment variables
 The `-save` flag stores the bucket name and region so you can push to the same location by just running:
 
 
-```$ git-s3-push```
+```$ git-s3-push```.
+
+The `-endpoint` can be used to override the standard AWS S3 endpoint by custom implementations provided, for example, by MinIO or Ceph.
 
 The `-public` flag can be used to make the files uploaded to your bucket publicly readable. When running without the `-public` flag, pushed files are stored privately.
 
