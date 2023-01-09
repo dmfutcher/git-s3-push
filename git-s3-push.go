@@ -199,8 +199,10 @@ func (repo *Repository) FindUnpushedModifiedFiles() error {
 
 		for i := 0; i < currentCommit.ParentCount(); i++ {
 			parentCommit := currentCommit.Parent(i)
-			if !visited.Contains(parentCommit) {
+			cid := parentCommit.Id().String()
+			if !visited.Contains(cid) {
 				queue = append(queue, parentCommit)
+				visited.Add(cid)
 			}
 		}
 
